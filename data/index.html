@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Word Up Game Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Word Up! Dashboard</h1>
+
+    <div style="display: flex; flex-direction: row; justify-content: space-between; flex-wrap: wrap;">
+      
+      <!-- 🔴 LED Control Box -->
+      <div id="led-control" class="led-box" style="flex: 1; min-width: 200px;">
+        <h3>LED Control</h3>
+        <input type="color" id="colorPicker" value="#ff0000">
+        <button onclick="addColor()">Add Color</button>
+        <div id="colorPreview"></div>
+        <br>
+        <label for="effect-select">Effect:</label>
+        <select id="effect-select">
+          <option value="fade">🪄 Fade</option>
+          <option value="blink">💡 Blink</option>
+          <option value="breathing">🌬️ Breathing</option>
+          <option value="solid">🎯 Solid</option>
+        </select>
+        <br><br>
+        <button onclick="clearColors()">Clear Colors</button>
+        <button onclick="sendLEDConfig()">Send to LEDs</button>
+      </div>
+
+      <!-- 🎵 Melody Selector Box -->
+      <div id="melody-box" class="led-box" style="flex: 1; min-width: 200px;">
+        <h3>Game Melody</h3>
+        <p>Select a background sound:</p>
+        <select id="melody-select">
+          <option value="nokia">📱 NOKIA - Drake</option>
+          <option value="wipwup">🔥 WIP WUP</option>
+          <option value="ateez">🧊 Ice On My Teeth</option>
+          <option value="baby">👶 Baby - Justin Bieber</option>
+          <option value="none">🚫 None</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 🟦 Word Input Area -->
+    <div class="input-section">
+      <input type="text" id="wordInput" placeholder="Enter a word..." maxlength="20"/>
+      <button onclick="addWord()">Add Word</button>
+      <p id="wordCount">0/10 words added</p>
+    </div>
+
+    <ul id="wordList" class="word-list"></ul>
+
+    <div class="input-section">
+      <input type="number" id="timerInput" placeholder="Set timer (sec)" min="1" max="999"/>
+      <button onclick="setTimer()">Set Timer</button>
+    </div>
+
+    <div class="input-section">
+      <button class="start-btn" onclick="startGame()">🚀 Start Game</button>
+    </div>
+
+    <!-- 🧾 System Logs -->
+    <div id="systemLogBox" class="log-box">
+      <h3>🧠 System Logs</h3>
+      <button onclick="clearSystemLogs()">🧹 Clear Logs</button>
+      <div id="systemLogArea" class="log-area"></div>
+    </div>
+
+    <!-- 🟢 Game Status -->
+    <div id="gameStatusBox" class="log-box">
+      <h3>📢 Game Status</h3>
+      <button onclick="clearGameLogs()">🧹 Clear Status</button>
+      <div id="gameStatusArea" class="log-area"></div>
+    </div>
+  </div>
+
+  <script>
+    const socket = new WebSocket(`ws://${location.hostname}/ws`);
+    let wordCounter = 0;
+    let wordList = [];
+    let selectedColors = [];
+
+    socket.onopen = () => {
+      console.log("WebSocket connected");
+    };
+
+    socket.onmessage = (event) => {
+      const msg = event.data;
+      const sysLog = document.getElementById("systemLogArea");
+      const gameLog = document.getElementById("gameStatusArea");
+
+      try {
+        const json = JSON.parse(msg);
+        if (json.log) {
+          sysLog.innerHTML += `<p>🟢 ${json.log}</p>`;
+          sysLog.scrollTop = sysLog.scrollHeight;
+        } else if (json.word) {
+          gameLog.innerHTML += `<p>📖 Word: ${json.word}</p>`;
+          gameLog.scrollTop = gameLog.scrollHeight;
+        } else {
+          sysLog.innerHTML += `<p>📩 ${msg}</p>`;
+          sysLog.scrollTop = sysLog.scrollHeight;
+        }
+      } catch (e) {
+        sysLog.innerHTML += `<p>📩 ${msg}</p>`;
+        sysLog.scrollTop = sysLog.scrollHeight;
+      }
+    };
+
+    function addWord() {
+      const input = document.getElementById("wordInput");
+      const word = input.value.trim();
+      if (word && wordCounter < 10 && !wordList.includes(word)) {
+        socket.send(JSON.stringify({ word: word }));
+        wordList.push(word);
+        wordCounter++;
+        document.getElementById("wordCount").innerText = `${wordCounter}/10 words added`;
+        input.value = "";
+        updateWordList();
+      } else if (wordCounter >= 10) {
+        alert("Maximum 10 words reached!");
+      }
+    }
+
+    function removeWord(word) {
+      const index = wordList.indexOf(word);
+      if (index > -1) {
+        wordList.splice(index, 1);
+        wordCounter--;
+        socket.send(JSON.stringify({ remove: word }));
+        document.getElementById("wordCount").innerText = `${wordCounter}/10 words added`;
+        updateWordList();
+      }
+    }
+
+    function updateWordList() {
+      const list = document.getElementById("wordList");
+      list.innerHTML = "";
+      wordList.forEach((word, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `${index + 1}. ${word} <button class="remove-btn" onclick="removeWord('${word}')">❌</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    function setTimer() {
+      const input = document.getElementById("timerInput");
+      const time = parseInt(input.value);
+      if (!isNaN(time) && time > 0) {
+        socket.send(JSON.stringify({ timer: time }));
+        document.getElementById("gameStatusArea").innerHTML += `<p>⏱ Timer set to ${time} seconds</p>`;
+        input.value = "";
+      }
+    }
+
+    function startGame() {
+      if (wordCounter === 0) {
+        alert("Add at least 1 word before starting!");
+        return;
+      }
+
+      const melody = document.getElementById("melody-select").value;
+      socket.send(JSON.stringify({ melody: melody }));
+      socket.send(JSON.stringify({ start: true }));
+
+      document.getElementById("gameStatusArea").innerHTML += `<p>🟢 Game started with melody: ${melody}</p>`;
+    }
+
+    // 🎨 LED Color Functions
+    function addColor() {
+      const color = document.getElementById("colorPicker").value;
+      if (selectedColors.length >= 5) {
+        alert("Only 5 colors allowed.");
+        return;
+      }
+      selectedColors.push(color);
+      updateColorPreview();
+    }
+
+    function updateColorPreview() {
+      const preview = document.getElementById("colorPreview");
+      preview.innerHTML = "";
+      selectedColors.forEach((c, idx) => {
+        const div = document.createElement("div");
+        div.className = "color-slot";
+        div.style.backgroundColor = c;
+        div.title = "Click to remove";
+        div.onclick = () => {
+          selectedColors.splice(idx, 1);
+          updateColorPreview();
+        };
+        preview.appendChild(div);
+      });
+    }
+
+    function clearColors() {
+      selectedColors = [];
+      updateColorPreview();
+    }
+
+    function sendLEDConfig() {
+      const effect = document.getElementById("effect-select").value;
+      if (selectedColors.length === 0) {
+        alert("Select at least one color first!");
+        return;
+      }
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          colors: selectedColors,
+          effect: effect
+        }));
+        document.getElementById("gameStatusArea").innerHTML += `<p>🎨 Sent LED config: ${selectedColors.length} color(s), effect "${effect}"</p>`;
+      }
+    }
+
+    function clearSystemLogs() {
+      document.getElementById("systemLogArea").innerHTML = "";
+    }
+
+    function clearGameLogs() {
+      document.getElementById("gameStatusArea").innerHTML = "";
+    }
+  </script>
+</body>
+</html>
