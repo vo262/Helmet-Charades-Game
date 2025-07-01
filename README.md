@@ -69,8 +69,9 @@ Helmet Charades Guide.pdf
 
 
 ## Project by:
-Wanposop Surayut, Seneca Polytechnic
-Wearable & Embedded Systems
+ Wanposop Surayut, Seneca Polytechnic , Comp Engineering
+
+-Wearable & Embedded Systems
 
 
 ### 1. Clone the repo:
