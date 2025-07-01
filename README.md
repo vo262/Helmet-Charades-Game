@@ -65,12 +65,15 @@ All build steps, 3D models, PCB layouts, wiring diagrams, and BOM are included i
 ---
 
 ## 🛠 Setup Instructions
+Helmet Charades Guide.pdf
+
+
+## Project by:
+Wanposop Surayut, Seneca Polytechnic
+Wearable & Embedded Systems
+
 
 ### 1. Clone the repo:
 ```bash
 git clone https://github.com/vo262/Helmet-Charades-Game.git
 
-
-Project by:
-Wanposop Surayut, Seneca Polytechnic
- Wearable & Embedded Systems
